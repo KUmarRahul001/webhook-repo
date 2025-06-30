@@ -10,8 +10,11 @@ TIME_WINDOW_MINUTES = 30  # Only show events from the last 30 minutes
 
 def load_events():
     if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, 'r') as f:
-            return json.load(f)
+        try:
+            with open(DATA_FILE, 'r') as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            return []
     return []
 
 def save_events(events):
@@ -24,7 +27,6 @@ def is_duplicate(new_event, events):
 @app.route('/')
 def index():
     events = load_events()
-    # Filter based on time window
     now = datetime.utcnow()
     valid_events = [
         e for e in events
@@ -37,7 +39,6 @@ def webhook():
     payload = request.json
     events = load_events()
 
-    # Determine event type and parse
     event_type = request.headers.get('X-GitHub-Event', 'unknown')
     new_event = {
         "id": str(payload.get("after") or payload.get("pull_request", {}).get("id")),
@@ -54,4 +55,5 @@ def webhook():
     return jsonify({"status": "success"}), 200
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))  # For Render deployment
+    app.run(host='0.0.0.0', port=port)
